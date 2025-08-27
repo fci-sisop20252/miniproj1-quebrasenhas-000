@@ -1,6 +1,9 @@
 # Relatório: Mini-Projeto 1 - Quebra-Senhas Paralelo
 
-**Aluno(s):** Nome (Matrícula), Nome (Matrícula),,,  
+**Aluno(s):** 
+Nome:Camila Huang (10419606) 
+Nome:Vinicius Wu (104355817)
+Nome:Xuanjun Jin (10436456),,,  
 ---
 
 ## 1. Estratégia de Paralelização
@@ -16,7 +19,7 @@
 ```
 
 ---
-
+aa
 ## 2. Implementação das System Calls
 
 **Descreva como você usou fork(), execl() e wait() no coordinator:**

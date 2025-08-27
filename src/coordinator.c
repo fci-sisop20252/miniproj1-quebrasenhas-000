@@ -67,6 +67,10 @@ int main(int argc, char *argv[]) {
     // Se não, imprimir mensagem de uso e sair com código 1
     
     // IMPLEMENTE AQUI: verificação de argc e mensagem de erro
+    if(argc != 5){
+        printf("Uso correto: %s arg1 arg2 arg3 arg4\n", argv[0]);
+        return 1;
+    }
     
     // Parsing dos argumentos (após validação)
     const char *target_hash = argv[1];
@@ -101,8 +105,8 @@ int main(int argc, char *argv[]) {
     // DICA: Use divisão inteira e distribua o resto entre os primeiros workers
     
     // IMPLEMENTE AQUI:
-    // long long passwords_per_worker = ?
-    // long long remaining = ?
+    long long passwords_per_worker = total_space/num_workers;
+    long long remaining = total_space % num_workers;
     
     // Arrays para armazenar PIDs dos workers
     pid_t workers[MAX_WORKERS];
@@ -111,20 +115,70 @@ int main(int argc, char *argv[]) {
     printf("Iniciando workers...\n");
     
     // IMPLEMENTE AQUI: Loop para criar workers
+    long long start_index = 0;
     for (int i = 0; i < num_workers; i++) {
+        long long count = passwords_per_worker;
+        if (i < remaining) {
+            count++; 
+        }
+        long long end_index = start_index + count - 1;
+
+    
+        char start_str[32], end_str[32], worker_id_str[8];
+        snprintf(start_str, sizeof(start_str), "%lld", start_index);
+        snprintf(end_str, sizeof(end_str), "%lld", end_index);
+        snprintf(worker_id_str, sizeof(worker_id_str), "%d", i);
+
+        pid_t pid = fork();
+    
+        if (pid < 0) {
+            perror("Erro ao criar worker");
+            exit(1);
+        } else if (pid == 0) {
+            execl("./worker", "worker", /* argumentos */, NULL);
+            perror("Erro no execl");
+            exit(1);
+        } else {
+            worker_pids[i] = pid;
+        }
+
+        start_index = end_index + 1;
+    }
+
+    
         // TODO: Calcular intervalo de senhas para este worker
+
         // TODO: Converter indices para senhas de inicio e fim
         // TODO 4: Usar fork() para criar processo filho
         // TODO 5: No processo pai: armazenar PID
         // TODO 6: No processo filho: usar execl() para executar worker
         // TODO 7: Tratar erros de fork() e execl()
-    }
     
     printf("\nTodos os workers foram iniciados. Aguardando conclusão...\n");
     
     // TODO 8: Aguardar todos os workers terminarem usando wait()
     // IMPORTANTE: O pai deve aguardar TODOS os filhos para evitar zumbis
-    
+    int workers_terminated = 0;
+    while (workers_terminated < num_workers) {
+        int status;
+        pid_t pid = wait(&status);
+        if (pid == -1) {
+            perror("Erro no wait");
+            break;
+        }
+        workers_terminated++;
+
+        if (WIFEXITED(status)) {
+            int exit_code = WEXITSTATUS(status);
+            printf("Worker com PID %d terminou com código %d\n", pid, exit_code);
+        } else if (WIFSIGNALED(status)) {
+            printf("Worker com PID %d foi terminado por sinal %d\n", pid, WTERMSIG(status));
+        } else {
+            printf("Worker com PID %d terminou de forma desconhecida\n", pid);
+        }   
+    }
+    printf("Quantidade total do workers que terminaram: %d", workers_terminated)
+
     // IMPLEMENTE AQUI:
     // - Loop para aguardar cada worker terminar
     // - Usar wait() para capturar status de saída
