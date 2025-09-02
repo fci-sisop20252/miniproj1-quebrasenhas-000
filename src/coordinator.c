@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
     
     // IMPLEMENTE AQUI: verificação de argc e mensagem de erro
     if(argc != 5){
-        printf("Uso correto: %s arg1 arg2 arg3 arg4\n", argv[0]);
+        printf("Uso correto: %s <hash_md5> <tamanho> <charset> <num_workers>\n", argv[0]);
         return 1;
     }
     
@@ -83,6 +83,18 @@ int main(int argc, char *argv[]) {
     // - password_len deve estar entre 1 e 10
     // - num_workers deve estar entre 1 e MAX_WORKERS
     // - charset não pode ser vazio
+    if (password_len < 1 || password_len > 10) {
+        fprintf(stderr, "Erro: <tamanho> deve estar entre 1 e 10.\n");
+        return 1;
+    }
+    if (num_workers < 1 || num_workers > MAX_WORKERS) {
+        fprintf(stderr, "Erro: <num_workers> deve estar entre 1 e %d.\n", MAX_WORKERS);
+        return 1;
+    }
+    if (charset_len <= 0) {
+        fprintf(stderr, "Erro: <charset> não pode ser vazio.\n");
+        return 1;
+    }
     
     printf("=== Mini-Projeto 1: Quebra de Senhas Paralelo ===\n");
     printf("Hash MD5 alvo: %s\n", target_hash);
@@ -123,36 +135,36 @@ int main(int argc, char *argv[]) {
         }
         long long end_index = start_index + count - 1;
 
-    
-        char start_str[32], end_str[32], worker_id_str[8];
-        snprintf(start_str, sizeof(start_str), "%lld", start_index);
-        snprintf(end_str, sizeof(end_str), "%lld", end_index);
-        snprintf(worker_id_str, sizeof(worker_id_str), "%d", i);
+        // TODO: Calcular intervalo de senhas para este worker
+        char start_pw[32], end_pw[32];
+        index_to_password(start_index, charset, charset_len, password_len, start_pw);
+        index_to_password(end_index, charset, charset_len, password_len, end_pw);
 
+        // TODO: Converter indices para senhas de inicio e fim
+        // TODO 4: Usar fork() para criar processo filho
         pid_t pid = fork();
     
         if (pid < 0) {
             perror("Erro ao criar worker");
             exit(1);
         } else if (pid == 0) {
-            execl("./worker", "worker", /* argumentos */, NULL);
+            // TODO 6: No processo filho: usar execl() para executar worker
+            char len_str[16], id_str[16];
+            snprintf(len_str, sizeof(len_str), "%d", password_len);
+            snprintf(id_str, sizeof(id_str), "%d", i);
+            execl("./worker", "worker", target_hash, start_pw, end_pw, charset, len_str, id_str, NULL);
             perror("Erro no execl");
             exit(1);
         } else {
-            worker_pids[i] = pid;
+            // TODO 5: No processo pai: armazenar PID
+            workers[i] = pid;
+            printf("Worker %d (PID %d): intervalo [%s .. %s]\n", i, pid, start_pw, end_pw);
         }
 
         start_index = end_index + 1;
     }
-
     
-        // TODO: Calcular intervalo de senhas para este worker
-
-        // TODO: Converter indices para senhas de inicio e fim
-        // TODO 4: Usar fork() para criar processo filho
-        // TODO 5: No processo pai: armazenar PID
-        // TODO 6: No processo filho: usar execl() para executar worker
-        // TODO 7: Tratar erros de fork() e execl()
+    // TODO 7: Tratar erros de fork() e execl()
     
     printf("\nTodos os workers foram iniciados. Aguardando conclusão...\n");
     
@@ -168,16 +180,30 @@ int main(int argc, char *argv[]) {
         }
         workers_terminated++;
 
+        int worker_index = -1;
+        for (int j = 0; j < num_workers; j++) {
+            if (workers[j] == pid) {
+                worker_index = j;
+                break;
+            }
+        }
+
+        if (worker_index != -1) {
+            printf("Worker %d (PID %d) terminou. ", worker_index, pid);
+        } else {
+            printf("Processo desconhecido (PID %d) terminou. ", pid);
+        }
+
         if (WIFEXITED(status)) {
             int exit_code = WEXITSTATUS(status);
-            printf("Worker com PID %d terminou com código %d\n", pid, exit_code);
+            printf("Código de saída: %d\n", exit_code);
         } else if (WIFSIGNALED(status)) {
-            printf("Worker com PID %d foi terminado por sinal %d\n", pid, WTERMSIG(status));
+            printf("Encerrado por sinal: %d\n", WTERMSIG(status));
         } else {
-            printf("Worker com PID %d terminou de forma desconhecida\n", pid);
-        }   
+            printf("Término desconhecido.\n");
+        }
     }
-    printf("Quantidade total do workers que terminaram: %d", workers_terminated)
+    printf("Quantidade total do workers que terminaram: %d\n", workers_terminated);
 
     // IMPLEMENTE AQUI:
     // - Loop para aguardar cada worker terminar
@@ -201,9 +227,41 @@ int main(int argc, char *argv[]) {
     // - Fazer parse do formato "worker_id:password"
     // - Verificar o hash usando md5_string()
     // - Exibir resultado encontrado
+    int found = 0;
+    int fd = open(RESULT_FILE, O_RDONLY);
+    if (fd >= 0) {
+        char buf[256];
+        ssize_t n = read(fd, buf, sizeof(buf) - 1);
+        close(fd);
+        if (n > 0) {
+            buf[n] = '\0';
+            char *colon = strchr(buf, ':');
+            if (colon) {
+                *colon = '\0';
+                const char *id_str = buf;
+                char *password = colon + 1;
+                size_t plen = strlen(password);
+                if (plen && (password[plen - 1] == '\n' || password[plen - 1] == '\r')) {
+                    password[plen - 1] = '\0';
+                }
+                char check_hash[33];
+                md5_string(password, check_hash);
+                if (strcmp(check_hash, target_hash) == 0) {
+                    printf("✓ Senha encontrada pelo worker %s: %s\n", id_str, password);
+                    found = 1;
+                } else {
+                    printf("⚠ Resultado inconsistente no arquivo: '%s'\n", password);
+                }
+            }
+        }
+    }
     
     // Estatísticas finais (opcional)
     // TODO: Calcular e exibir estatísticas de performance
+    if (!found) {
+        printf("✗ Nenhum worker encontrou a senha.\n");
+    }
+    printf("Tempo total: %.2f s\n", elapsed_time);
     
-    return 0;
+    return found ? 0 : 2;
 }
