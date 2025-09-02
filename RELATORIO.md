@@ -91,6 +91,7 @@ Com isso, apenas o primeiro worker que encontrar a senha consegue criar e escrev
 Além disso, cada worker verifica periodicamente se o arquivo já existe usando check_result_exists(). Se o arquivo existir, o worker encerra sua execução imediatamente.
 
 Dessa forma, evito condições de corrida, garantindo que nenhum worker sobrescreva o resultado de outro, mantendo os dados consistentes e confiáveis.
+
 **Como o coordinator consegue ler o resultado?**
 
 No coordinator, depois que todos os workers terminam, eu abro o arquivo password_found.txt em modo leitura, leio o conteúdo para um buffer e faço o parse do formato "worker_id:password" usando strchr para separar o ID do worker da senha.
