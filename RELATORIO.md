@@ -44,8 +44,14 @@ for (int i = 0; i < num_workers; i++) {
     if (i < remaining) {
         count++; 
     }
+    if(count<=0) count=1;
+    if (start_index >= total_space) {
+        break; // Workers extras não são necessários
+    }
     long long end_index = start_index + count - 1;
-
+    if (end_index >= total_space) {
+        end_index = total_space - 1;
+    }
     // Calcular intervalo de senhas para este worker
     char start_pw[32], end_pw[32];
     index_to_password(start_index, charset, charset_len, password_len, start_pw);

@@ -47,20 +47,21 @@ int increment_password(char *password, const char *charset, int charset_len, int
     // - Se estourou: definir como primeiro caractere e continuar loop
     // - Se todos estouraram: retornar 0 (fim do espaço)
     for (int i = password_len - 1; i >= 0; i--) {
-        int idx = -1;
-        for (int j = 0; j < charset_len; j++) {
-            if (password[i] == charset[j]) { idx = j; break; }
-        }
-        if (idx < 0) return 0; // caractere fora do charset
-
+        // Encontrar o índice atual no charset
+        char *pos = strchr(charset, password[i]);
+        if (!pos) return 0; // Caractere não encontrado no charset
+        
+        int idx = pos - charset;
+        
         if (idx + 1 < charset_len) {
             password[i] = charset[idx + 1];
-            return 1; // incrementou sem carry
+            return 1; // Incremento bem-sucedido
         } else {
-            password[i] = charset[0]; // reset e continua para próximo dígito
+            password[i] = charset[0]; // Reset para primeiro caractere
+            // Continua para o próximo dígito (carry)
         }
     }
-    return 0;  // SUBSTITUA por sua implementação
+    return 0; // Overflow - chegou ao final
 }
 
 /**
@@ -96,14 +97,13 @@ void save_result(int worker_id, const char *password) {
     // - Se falhou: outro worker já encontrou
     int fd = open(RESULT_FILE, O_CREAT | O_EXCL | O_WRONLY, 0644);
     if (fd < 0) {
+        perror("Erro ao criar aequivo");
         return; // outro worker já escreveu
     }
-    char buffer[256];
-    int len = snprintf(buffer, sizeof(buffer), "%d:%s\n", worker_id, password);
-    if (len > 0) {
-        write(fd, buffer, len);
+    if (fd >= 0) {
+        dprintf(fd, "%d:%s\n", worker_id, password);
+        close(fd);
     }
-    close(fd);
 }
 
 /**
@@ -159,7 +159,9 @@ int main(int argc, char *argv[]) {
         // TODO 4: Calcular o hash MD5 da senha atual
         // IMPORTANTE: Use a biblioteca MD5 FORNECIDA - md5_string(senha, hash_buffer)
         md5_string(current_password, computed_hash);
-        
+        passwords_checked++;
+        //printf("[Worker %d][DEBUG] senha=%s | computed=[%s] | alvo=[%s]\n", worker_id, current_password, computed_hash, target_hash);
+
         // TODO 5: Comparar com o hash alvo
         // Se encontrou: salvar resultado e terminar
         if (strcmp(computed_hash, target_hash) == 0) {
@@ -172,15 +174,15 @@ int main(int argc, char *argv[]) {
         // DICA: Use a função increment_password implementada acima
         // TODO: Verificar se chegou ao fim do intervalo
         // Se sim: terminar loop
-        if (password_compare(current_password, end_password) == 0) {
-            break; // já testou a última
+
+        if (password_compare(current_password, end_password) > 0) {
+            printf("[Worker %d] Fim do intervalo alcançado: %s\n", worker_id, current_password);
+            break;
         }
-        
         if (!increment_password(current_password, charset, charset_len, password_len)) {
-            break; // overflow, acabou espaço
+            printf("[Worker %d] Overflow - fim do espaço de busca: %s\n", worker_id, current_password);
         }
         
-        passwords_checked++;
     }
     
     // Estatísticas finais

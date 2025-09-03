@@ -9,7 +9,7 @@
 #include "hash_utils.h"
 
 /**
- * PROCESSO COORDENADOR - Mini-Projeto 1: Quebra de Senhas Paralelo
+ PROCESSO COORDENADOR - Mini-Projeto 1: Quebra de Senhas Paralelo
  * 
  * Este programa coordena múltiplos workers para quebrar senhas MD5 em paralelo.
  * O MD5 JÁ ESTÁ IMPLEMENTADO - você deve focar na paralelização (fork/exec/wait).
@@ -49,8 +49,7 @@ long long calculate_search_space(int charset_len, int password_len) {
  * @param password_len Comprimento da senha
  * @param output Buffer para armazenar a senha gerada
  */
-void index_to_password(long long index, const char *charset, int charset_len, 
-                       int password_len, char *output) {
+void index_to_password(long long index, const char *charset, int charset_len, int password_len, char *output) {
     for (int i = password_len - 1; i >= 0; i--) {
         output[i] = charset[index % charset_len];
         index /= charset_len;
@@ -133,8 +132,14 @@ int main(int argc, char *argv[]) {
         if (i < remaining) {
             count++; 
         }
+        if(count<=0) count=1;
+        if (start_index >= total_space) {
+            break; // Workers extras não são necessários
+        }
         long long end_index = start_index + count - 1;
-
+        if (end_index >= total_space) {
+            end_index = total_space - 1;
+        }
         // TODO: Calcular intervalo de senhas para este worker
         char start_pw[32], end_pw[32];
         index_to_password(start_index, charset, charset_len, password_len, start_pw);
@@ -171,8 +176,9 @@ int main(int argc, char *argv[]) {
     // TODO 8: Aguardar todos os workers terminarem usando wait()
     // IMPORTANTE: O pai deve aguardar TODOS os filhos para evitar zumbis
     int workers_terminated = 0;
-    while (workers_terminated < num_workers) {
-        int status;
+    int status;
+
+    for(int i =0; i<num_workers;i++) {
         pid_t pid = wait(&status);
         if (pid == -1) {
             perror("Erro no wait");
@@ -195,13 +201,15 @@ int main(int argc, char *argv[]) {
         }
 
         if (WIFEXITED(status)) {
-            int exit_code = WEXITSTATUS(status);
-            printf("Código de saída: %d\n", exit_code);
+            printf("Código de saída: %d\n", WEXITSTATUS(status));
         } else if (WIFSIGNALED(status)) {
             printf("Encerrado por sinal: %d\n", WTERMSIG(status));
         } else {
             printf("Término desconhecido.\n");
         }
+    }
+    if (workers_terminated < num_workers) {
+        printf("Aviso: apenas %d de %d workers terminaram\n", workers_terminated, num_workers);
     }
     printf("Quantidade total do workers que terminaram: %d\n", workers_terminated);
 
@@ -261,7 +269,13 @@ int main(int argc, char *argv[]) {
     if (!found) {
         printf("✗ Nenhum worker encontrou a senha.\n");
     }
+    printf("\n=== Estatísticas ===\n");
     printf("Tempo total: %.2f s\n", elapsed_time);
+    printf("Senhas verificadas: %lld\n", total_space);
+    if (elapsed_time > 0) {
+        printf("Taxa: %.0f senhas/segundo\n", total_space / elapsed_time);
+    }
+    printf("\n");
     
-    return found ? 0 : 2;
+    return 0;
 }
