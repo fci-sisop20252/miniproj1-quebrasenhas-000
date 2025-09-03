@@ -156,6 +156,7 @@ Depois, passei a **usar o array dentro do loop de criação e de espera dos work
 time ./coordinator "202cb962ac59075b964b07152d234b70" 3 "0123456789" 1
 time ./coordinator "202cb962ac59075b964b07152d234b70" 3 "0123456789" 4
 
+
 # Teste com senha maior
 time ./coordinator "5d41402abc4b2a76b9719d911017c592" 5 "abcdefghijklmnopqrstuvwxyz" 4
 ```
