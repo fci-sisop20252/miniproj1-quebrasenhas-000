@@ -159,6 +159,7 @@ int main(int argc, char *argv[]) {
         // TODO 4: Calcular o hash MD5 da senha atual
         // IMPORTANTE: Use a biblioteca MD5 FORNECIDA - md5_string(senha, hash_buffer)
         md5_string(current_password, computed_hash);
+        passwords_checked++;
         //printf("[Worker %d][DEBUG] senha=%s | computed=[%s] | alvo=[%s]\n", worker_id, current_password, computed_hash, target_hash);
 
         // TODO 5: Comparar com o hash alvo
@@ -179,7 +180,7 @@ int main(int argc, char *argv[]) {
             printf("[Worker %d] Fim do intervalo alcançado: %s\n", worker_id, current_password);
             break;
         }
-        passwords_checked++;
+
         if (!increment_password(current_password, charset, charset_len, password_len)) {
             printf("[Worker %d] Overflow - fim do espaço de busca: %s\n", worker_id, current_password);
             break;
