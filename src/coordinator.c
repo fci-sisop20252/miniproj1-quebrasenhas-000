@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
         } else {
             // TODO 5: No processo pai: armazenar PID
             workers[i] = pid;
-            printf("Worker %d (PID %d): intervalo [%s .. %s]\n", i, pid, start_pw, end_pw);
+            printf("Worker %d (PID %d): intervalo [%s .. %s] (%lld senhas)\n", i, pid, start_pw, end_pw,count);
         }
 
         start_index = end_index + 1;
@@ -255,7 +255,11 @@ int main(int argc, char *argv[]) {
                 char check_hash[33];
                 md5_string(password, check_hash);
                 if (strcmp(check_hash, target_hash) == 0) {
-                    printf("✓ Senha encontrada pelo worker %s: %s\n", id_str, password);
+                    printf("✓ Senha encontrada\n ");
+                    printf("Senha: %s\n",password); 
+                    printf("Hash: %s\n",check_hash);
+                    printf("Encontrada pelo worker %s\n", id_str);
+                    printf("Verificação: ✓ Hash corresponde!\n");
                     found = 1;
                 } else {
                     printf("⚠ Resultado inconsistente no arquivo: '%s'\n", password);
@@ -267,10 +271,10 @@ int main(int argc, char *argv[]) {
     // Estatísticas finais (opcional)
     // TODO: Calcular e exibir estatísticas de performance
     if (!found) {
-        printf("✗ Nenhum worker encontrou a senha.\n");
+        printf("✗ Senha não encontrada no espaço de busca especificado.\nVerifique se o hash está correto e se o charset contém todos os caracteres.\n");
     }
     printf("\n=== Estatísticas ===\n");
-    printf("Tempo total: %.2f s\n", elapsed_time);
+    printf("Tempo total: %.6f s\n", elapsed_time);
     printf("Senhas verificadas: %lld\n", total_space);
     if (elapsed_time > 0) {
         printf("Taxa: %.0f senhas/segundo\n", total_space / elapsed_time);

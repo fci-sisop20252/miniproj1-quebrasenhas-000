@@ -159,13 +159,13 @@ int main(int argc, char *argv[]) {
         // TODO 4: Calcular o hash MD5 da senha atual
         // IMPORTANTE: Use a biblioteca MD5 FORNECIDA - md5_string(senha, hash_buffer)
         md5_string(current_password, computed_hash);
-        passwords_checked++;
         //printf("[Worker %d][DEBUG] senha=%s | computed=[%s] | alvo=[%s]\n", worker_id, current_password, computed_hash, target_hash);
 
         // TODO 5: Comparar com o hash alvo
         // Se encontrou: salvar resultado e terminar
         if (strcmp(computed_hash, target_hash) == 0) {
             printf("[Worker %d] >>> SENHA ENCONTRADA: %s\n", worker_id, current_password);
+            printf("[Worker %d] ✓ Senha encontrada e salva: %s\n", worker_id, current_password);
             save_result(worker_id, current_password);
             break;
         }
@@ -174,23 +174,23 @@ int main(int argc, char *argv[]) {
         // DICA: Use a função increment_password implementada acima
         // TODO: Verificar se chegou ao fim do intervalo
         // Se sim: terminar loop
-
-        if (password_compare(current_password, end_password) > 0) {
+        
+        if (password_compare(current_password, end_password) >= 0) {
             printf("[Worker %d] Fim do intervalo alcançado: %s\n", worker_id, current_password);
             break;
         }
+        passwords_checked++;
         if (!increment_password(current_password, charset, charset_len, password_len)) {
             printf("[Worker %d] Overflow - fim do espaço de busca: %s\n", worker_id, current_password);
+            break;
         }
-        
     }
     
     // Estatísticas finais
     time_t end_time = time(NULL);
-    double total_time = difftime(end_time, start_time);
+    double total_time = (double) difftime(end_time, start_time);
     
-    printf("[Worker %d] Finalizado. Total: %lld senhas em %.2f segundos", 
-           worker_id, passwords_checked, total_time);
+    printf("[Worker %d] Finalizado. Total: %lld senhas em %lf segundos", worker_id, passwords_checked, total_time);
     if (total_time > 0) {
         printf(" (%.0f senhas/s)", passwords_checked / total_time);
     }
